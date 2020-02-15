@@ -14,10 +14,10 @@ WiFiClient client;
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 const char *host = "api.seniverse.com";
-const char *ssid = "TP-LINK_903E";          
-const char *password = "DmgZg2312";      
-const char *city = "xian";
-const char *key = "SvapyYFkj7EvAAqfG";
+const char *ssid = "";              //这里填你的wifi名字          
+const char *password = "";          //这里填你的wifi密码
+const char *city = "";              //这里填你现在住的城市（获取更新）
+const char *key = "";               //这里填你的私钥
 const unsigned long HTTP_TIMEOUT = 2100;
 const size_t MAX_CONTENT_SIZE = 2048;
 
