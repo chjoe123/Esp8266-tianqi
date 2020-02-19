@@ -1,32 +1,29 @@
 #include <ESP8266WiFi.h>
 #include <ArduinoJson.h>
 
-const char* ssid = "";          
-const char* password = "";         
-const char* api_key = "";      
-const char* city_id = "1790633";
+const char* ssid = "{Your SSID}";          
+const char* password = "{Your Password}";         
+const char* key = "{API KEY}";      
+const char* location = "{City Name}";
 unsigned long previousTime = 0;
-const char* host = "api.openweathermap.org";
+const char* host = "api.seniverse.com";
 size_t MAX_CONTENT_SIZE = 1024;
 WiFiClient client;
 
 struct UserData  {
+  char cityName[16];
   char weather[25];
-  char temp[16];
-  char tempMin[16];
-  char tempMax[16];
-  char humidity[16];
+  char temperature[16];
   
 };
 
-bool sendRequest(const char* api_key, const char* host, const char* city_id) {
+bool sendRequest(const char* key, const char* host, const char* location) {
   //https://api.seniverse.com/v3/weather/now.json?key=SvapyYFkj7EvAAqfG&location=beijing&language=zh-Hans&unit=c
   //api.openweathermap.org/data/2.5/weather?id={city id}&appid={your api key}
-  String getUrl = "/data/2.5/weather?id=";
-  getUrl += city_id;
-  getUrl += "&appid=";
-  getUrl += api_key;
-  getUrl += "&units=metric";
+  String getUrl = "/v3/weather/now.json?key=";
+  getUrl += key;
+  getUrl += "&language=en&location=";
+  getUrl += location;
 
   client.print("GET " + getUrl + " HTTP/1.1\r\n" +
                 "Host: " + host + "\r\n" +
@@ -55,22 +52,16 @@ void parseUserData(char* content, struct UserData userData) {
   DynamicJsonBuffer jsonBuffer;
   JsonObject &root = jsonBuffer.parseObject(content);
 
-  strcpy(userData.weather, root["weather"][0]["main"]);
-  strcpy(userData.temp, root["main"]["temp"]);
-  strcpy(userData.tempMin, root["main"]["temp_min"]);
-  strcpy(userData.tempMax, root["main"]["temp_max"]);
-  strcpy(userData.humidity, root["main"]["humidity"]);
+  strcpy(userData.cityName, root["results"][0]["location"]["name"]);
+  strcpy(userData.weather, root["results"][0]["now"]["text"]);
+  strcpy(userData.temperature, root["results"][0]["now"]["temperature"]);
 
+  Serial.print("CityName: ");
+  Serial.println(userData.cityName);
   Serial.print("Weather: ");
   Serial.println(userData.weather);
-  Serial.print("Temp: ");
-  Serial.println(userData.temp);
-  Serial.print("Temp_Min: ");
-  Serial.println(userData.tempMin);
-  Serial.print("Temp_Max: ");
-  Serial.println(userData.tempMax);
-  Serial.print("Humidity: ");
-  Serial.println(userData.humidity);
+  Serial.print("Temperature: ");
+  Serial.println(userData.temperature);
 }
 
 void setup() {
@@ -88,11 +79,30 @@ void setup() {
   }
   Serial.println();
   Serial.println("WiFi Connected!");
+
+  delay(500);
+  
+  while(!client.connect(host, 80))
+  {
+      Serial.println("Failed to connecting to host!");
+      return;
+  }
+
+  if( sendRequest(key, host, location) && skipHeaders() )
+  {
+      /* Read response from server*/
+      char content[MAX_CONTENT_SIZE];
+      readResponse(content, sizeof(content)); 
+      UserData userData;
+      parseUserData(content, userData);
+  }
+
+  previousTime = millis();
 }
 
 void loop() {
   unsigned long currentTime = millis();
-  if( currentTime - previousTime >= 10000)
+  if( currentTime - previousTime >= 5*60000)
   {
       /* Update per 5 minutes*/
       while(!client.connect(host, 80))
@@ -101,11 +111,11 @@ void loop() {
           return;
       }
     
-      if( sendRequest(api_key, host, city_id) && skipHeaders() )
+      if( sendRequest(key, host, location) && skipHeaders() )
       {
           /* Read response from server*/
           char content[MAX_CONTENT_SIZE];
-          readResponse(content, sizeof(content));
+          readResponse(content, sizeof(content)); 
           UserData userData;
           parseUserData(content, userData);
       }
